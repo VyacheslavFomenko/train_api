@@ -13,3 +13,5 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path("me/", UserManageView.as_view(), name="manage_user")
 ]
+
+app_name = "user"
