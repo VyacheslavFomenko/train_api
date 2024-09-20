@@ -1,4 +1,5 @@
 from django.db import models
+from rest_framework.exceptions import ValidationError
 
 from train_service import settings
 
@@ -77,3 +78,15 @@ class Ticket(models.Model):  #
     def __str__(self):
         return f"{self.cargo}, {self.seat}, {self.journey}, {self.order}"
 
+    def clean(self):
+        if self.cargo < 0:
+            raise ValidationError("cargo must be a positive integer")
+        if self.seat < 1:
+            raise ValidationError("seat`s must be greater then 1")
+
+        if Ticket.objects.filter(journey=self.journey, seat=self.seat).exists():
+            raise ValidationError(f"{self.seat} is already taken please select another")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super(Ticket, self).save(*args, **kwargs)
