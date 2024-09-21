@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import viewsets, mixins
 from rest_framework.permissions import IsAdminUser
 from rest_framework.viewsets import GenericViewSet
@@ -88,6 +90,33 @@ class TrainViewSet(viewsets.ModelViewSet):
 
         return queryset.distinct()
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "name",
+                type=OpenApiTypes.STR,
+                description="Filter by name  (ex. ?name=express)",
+            ),
+            OpenApiParameter(
+                "cargo_num",
+                type=OpenApiTypes.INT,
+                description="Filter by cargo number (ex. ?cargo_num=100)",
+            ),
+            OpenApiParameter(
+                "places_in_cargo",
+                type=OpenApiTypes.STR,
+                description="Filter by train places in cargo (ex. ?places_in_cargo=12)",
+            ),
+            OpenApiParameter(
+                "train_type",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by train type (ex. ?train_type=2,5)",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
 
 class RouteViewSet(viewsets.ModelViewSet):
     queryset = Route.objects.select_related("source__name", "destination__name")
@@ -114,6 +143,23 @@ class RouteViewSet(viewsets.ModelViewSet):
             destination_id = params_to_ints(destination)
             queryset = queryset.filter(destination__id__in=destination_id)
         return queryset.distinct()
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "source",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by source station (ex. ?source=2,5)",
+            ),
+            OpenApiParameter(
+                "destination",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by destination station (ex. ?destination=2,5)",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
 
 
 class JourneyViewSet(viewsets.ModelViewSet):
@@ -154,3 +200,36 @@ class JourneyViewSet(viewsets.ModelViewSet):
             ar_time = self._extract_date(arrival_time)
             queryset = queryset.filter(ar_time__date=ar_time)
         return queryset.distinct()
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "route",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by route (ex. ?route=2,5)",
+            ),
+            OpenApiParameter(
+                "train",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by train (ex. ?train=2,5)",
+            ),
+            OpenApiParameter(
+                "departure_time",
+                type=OpenApiTypes.DATETIME,
+                description="Filter by departure_time  (ex. ?departure_time=1.01.01)",
+            ),
+            OpenApiParameter(
+                "arrival_time",
+                type=OpenApiTypes.DATETIME,
+                description="Filter by arrival_time  (ex. ?arrival_time=1.01.01)",
+            ),
+            OpenApiParameter(
+                "crew",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by crew (ex. ?train_type=2,5)",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+
+        return super().list(request, *args, **kwargs)
