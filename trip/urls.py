@@ -10,7 +10,7 @@ router.register("train_type", TrainTypeViewSet)
 router.register("crew", CrewViewSet)
 router.register("order", OrderViewSet)
 router.register("train", TrainViewSet)
-router.register("router", RouteViewSet)
+router.register("route", RouteViewSet)
 router.register("journey", JourneyViewSet)
 
 urlpatterns = [
