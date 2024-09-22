@@ -3,11 +3,12 @@ from datetime import datetime
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import viewsets, mixins
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.viewsets import GenericViewSet
 
 from trip.models import Station, TrainType, Crew, Order, Train, Route, Journey
 from trip.pagination import DefaultPagination
+from trip.permissions import IsAdminOrReadOnly
 from trip.serializers import StationSerializer, TrainTypeSerializer, CrewSerializer, \
     OrderSerializer, OrderListSerializer, TrainSerializer, TrainListSerializer, RouteListSerializer, \
     RouteDetailSerializer, RouteSerializer, JourneySerializer, JourneyListSerializer, JourneyDetailSerializer
@@ -20,7 +21,7 @@ class StationViewSet(mixins.CreateModelMixin,
     queryset = Station.objects.all()
     serializer_class = StationSerializer
     pagination_class = DefaultPagination
-    permission_classes = [IsAdminUser, ]
+    permission_classes = [IsAdminOrReadOnly, ]
 
 
 class TrainTypeViewSet(mixins.CreateModelMixin,
@@ -29,7 +30,7 @@ class TrainTypeViewSet(mixins.CreateModelMixin,
     queryset = TrainType.objects.all()
     serializer_class = TrainTypeSerializer
     pagination_class = DefaultPagination
-    permission_classes = [IsAdminUser, ]
+    permission_classes = [IsAdminOrReadOnly, ]
 
 
 class CrewViewSet(mixins.CreateModelMixin,
@@ -46,6 +47,7 @@ class OrderViewSet(mixins.ListModelMixin,
                    GenericViewSet, ):
     queryset = Order.objects.prefetch_related("ticket__journey__route", "ticket__journey__train")
     serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated, ]
     pagination_class = DefaultPagination
 
     def get_queryset(self):
@@ -63,6 +65,7 @@ class OrderViewSet(mixins.ListModelMixin,
 class TrainViewSet(viewsets.ModelViewSet):
     queryset = Train.objects.select_related("train_type")
     serializer_class = TrainSerializer
+    permission_classes = [IsAdminOrReadOnly,]
     pagination_class = DefaultPagination
 
     def get_serializer_class(self):
@@ -124,6 +127,7 @@ class TrainViewSet(viewsets.ModelViewSet):
 class RouteViewSet(viewsets.ModelViewSet):
     queryset = Route.objects.select_related("source", "destination")
     serializer_class = RouteSerializer
+    permission_classes = [IsAdminOrReadOnly, ]
     pagination_class = DefaultPagination
 
     def get_serializer_class(self):
@@ -171,6 +175,7 @@ class RouteViewSet(viewsets.ModelViewSet):
 class JourneyViewSet(viewsets.ModelViewSet):
     queryset = Journey.objects.prefetch_related("route", "train", "crew")
     serializer_class = JourneySerializer
+    permission_classes = [IsAdminOrReadOnly, ]
     pagination_class = DefaultPagination
 
     def get_serializer_class(self):
