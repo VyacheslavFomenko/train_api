@@ -49,12 +49,15 @@ class OrderViewSet(mixins.ListModelMixin,
     pagination_class = DefaultPagination
 
     def get_queryset(self):
-        return Order.objects.filter(user=self.request.user)
+        return Order.objects.filter(user=self.request.user.id)
 
     def get_serializer_class(self):
         if self.action == "list":
             return OrderListSerializer
         return OrderSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
 
 
 class TrainViewSet(viewsets.ModelViewSet):
@@ -119,15 +122,18 @@ class TrainViewSet(viewsets.ModelViewSet):
 
 
 class RouteViewSet(viewsets.ModelViewSet):
-    queryset = Route.objects.select_related("source__name", "destination__name")
+    queryset = Route.objects.select_related("source", "destination")
     serializer_class = RouteSerializer
     pagination_class = DefaultPagination
 
     def get_serializer_class(self):
+        print(self.action)
         if self.action == "list":
             return RouteListSerializer
+
         if self.action == "retrieve":
             return RouteDetailSerializer
+
         return RouteSerializer
 
     def get_queryset(self):
@@ -183,7 +189,6 @@ class JourneyViewSet(viewsets.ModelViewSet):
         train = self.request.query_params.get("train")
         departure_time = self.request.query_params.get("departure_time")
         arrival_time = self.request.query_params.get("arrival_time")
-        # crew = self.request.query_params.get("crew")
 
         queryset = self.queryset
 
