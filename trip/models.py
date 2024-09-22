@@ -90,3 +90,7 @@ class Ticket(models.Model):  #
     def save(self, *args, **kwargs):
         self.full_clean()
         super(Ticket, self).save(*args, **kwargs)
+
+    class Meta:
+        unique_together = ("journey", "seat")
+        ordering = ["seat"]
