@@ -208,7 +208,7 @@ class JourneyViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(departure_time__date=dp_time)
         if arrival_time:
             ar_time = self._extract_date(arrival_time)
-            queryset = queryset.filter(ar_time__date=ar_time)
+            queryset = queryset.filter(arrival_time__date=ar_time)
         return queryset.distinct()
 
     @extend_schema(
