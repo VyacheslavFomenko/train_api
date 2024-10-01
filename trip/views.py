@@ -1,11 +1,14 @@
 from datetime import datetime
 
+from drf_spectacular.types import OpenApiTypes
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 from rest_framework import viewsets, mixins
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.viewsets import GenericViewSet
 
 from trip.models import Station, TrainType, Crew, Order, Train, Route, Journey
 from trip.pagination import DefaultPagination
+from trip.permissions import IsAdminOrReadOnly
 from trip.serializers import StationSerializer, TrainTypeSerializer, CrewSerializer, \
     OrderSerializer, OrderListSerializer, TrainSerializer, TrainListSerializer, RouteListSerializer, \
     RouteDetailSerializer, RouteSerializer, JourneySerializer, JourneyListSerializer, JourneyDetailSerializer
@@ -18,7 +21,7 @@ class StationViewSet(mixins.CreateModelMixin,
     queryset = Station.objects.all()
     serializer_class = StationSerializer
     pagination_class = DefaultPagination
-    permission_classes = [IsAdminUser, ]
+    permission_classes = [IsAdminOrReadOnly, ]
 
 
 class TrainTypeViewSet(mixins.CreateModelMixin,
@@ -27,7 +30,7 @@ class TrainTypeViewSet(mixins.CreateModelMixin,
     queryset = TrainType.objects.all()
     serializer_class = TrainTypeSerializer
     pagination_class = DefaultPagination
-    permission_classes = [IsAdminUser, ]
+    permission_classes = [IsAdminOrReadOnly, ]
 
 
 class CrewViewSet(mixins.CreateModelMixin,
@@ -44,20 +47,25 @@ class OrderViewSet(mixins.ListModelMixin,
                    GenericViewSet, ):
     queryset = Order.objects.prefetch_related("ticket__journey__route", "ticket__journey__train")
     serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated, ]
     pagination_class = DefaultPagination
 
     def get_queryset(self):
-        return Order.objects.filter(user=self.request.user)
+        return Order.objects.filter(user=self.request.user.id)
 
     def get_serializer_class(self):
         if self.action == "list":
             return OrderListSerializer
         return OrderSerializer
 
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
 
 class TrainViewSet(viewsets.ModelViewSet):
     queryset = Train.objects.select_related("train_type")
     serializer_class = TrainSerializer
+    permission_classes = [IsAdminOrReadOnly,]
     pagination_class = DefaultPagination
 
     def get_serializer_class(self):
@@ -88,17 +96,48 @@ class TrainViewSet(viewsets.ModelViewSet):
 
         return queryset.distinct()
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "name",
+                type=OpenApiTypes.STR,
+                description="Filter by name  (ex. ?name=express)",
+            ),
+            OpenApiParameter(
+                "cargo_num",
+                type=OpenApiTypes.INT,
+                description="Filter by cargo number (ex. ?cargo_num=100)",
+            ),
+            OpenApiParameter(
+                "places_in_cargo",
+                type=OpenApiTypes.STR,
+                description="Filter by train places in cargo (ex. ?places_in_cargo=12)",
+            ),
+            OpenApiParameter(
+                "train_type",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by train type (ex. ?train_type=2,5)",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
 
 class RouteViewSet(viewsets.ModelViewSet):
-    queryset = Route.objects.select_related("source__name", "destination__name")
+    queryset = Route.objects.select_related("source", "destination")
     serializer_class = RouteSerializer
+    permission_classes = [IsAdminOrReadOnly, ]
     pagination_class = DefaultPagination
 
     def get_serializer_class(self):
+        print(self.action)
         if self.action == "list":
             return RouteListSerializer
+
         if self.action == "retrieve":
             return RouteDetailSerializer
+
         return RouteSerializer
 
     def get_queryset(self):
@@ -115,10 +154,28 @@ class RouteViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(destination__id__in=destination_id)
         return queryset.distinct()
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "source",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by source station (ex. ?source=2,5)",
+            ),
+            OpenApiParameter(
+                "destination",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by destination station (ex. ?destination=2,5)",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
 
 class JourneyViewSet(viewsets.ModelViewSet):
     queryset = Journey.objects.prefetch_related("route", "train", "crew")
     serializer_class = JourneySerializer
+    permission_classes = [IsAdminOrReadOnly, ]
     pagination_class = DefaultPagination
 
     def get_serializer_class(self):
@@ -137,7 +194,6 @@ class JourneyViewSet(viewsets.ModelViewSet):
         train = self.request.query_params.get("train")
         departure_time = self.request.query_params.get("departure_time")
         arrival_time = self.request.query_params.get("arrival_time")
-        # crew = self.request.query_params.get("crew")
 
         queryset = self.queryset
 
@@ -152,5 +208,38 @@ class JourneyViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(departure_time__date=dp_time)
         if arrival_time:
             ar_time = self._extract_date(arrival_time)
-            queryset = queryset.filter(ar_time__date=ar_time)
+            queryset = queryset.filter(arrival_time__date=ar_time)
         return queryset.distinct()
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "route",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by route (ex. ?route=2,5)",
+            ),
+            OpenApiParameter(
+                "train",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by train (ex. ?train=2,5)",
+            ),
+            OpenApiParameter(
+                "departure_time",
+                type=OpenApiTypes.DATETIME,
+                description="Filter by departure_time  (ex. ?departure_time=1.01.01)",
+            ),
+            OpenApiParameter(
+                "arrival_time",
+                type=OpenApiTypes.DATETIME,
+                description="Filter by arrival_time  (ex. ?arrival_time=1.01.01)",
+            ),
+            OpenApiParameter(
+                "crew",
+                type={"type": "list", "items": {"type": "number"}},
+                description="Filter by crew (ex. ?train_type=2,5)",
+            ),
+        ]
+    )
+    def list(self, request, *args, **kwargs):
+
+        return super().list(request, *args, **kwargs)

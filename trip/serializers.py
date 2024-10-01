@@ -29,11 +29,11 @@ class TrainSerializer(serializers.ModelSerializer):
 
 
 class TrainListSerializer(serializers.ModelSerializer):
-    train_type_name = serializers.CharField(source="train_type.name", read_only=True)
+    train_type = serializers.CharField(source="train_type.name", read_only=True)
 
     class Meta:
         model = Train
-        fields = ("id", "name", "cargo_num", "places_in_cargo", "train_type_name")
+        fields = ("id", "name", "cargo_num", "places_in_cargo", "train_type")
 
 
 class RouteSerializer(serializers.ModelSerializer):
@@ -43,12 +43,12 @@ class RouteSerializer(serializers.ModelSerializer):
 
 
 class RouteListSerializer(serializers.ModelSerializer):
-    source_station_name = serializers.CharField(source="station.name", read_only=True)
-    destination_station_name = serializers.CharField(source="station.name", write_only=True)
+    source = serializers.CharField(source="station.name", read_only=True)
+    destination = serializers.CharField(source="station.name", write_only=True)
 
     class Meta:
         model = Route
-        fields = ("id", "source_station_name", "destination_station_name", "distance")
+        fields = ("id", "source", "destination", "distance")
 
 
 class RouteDetailSerializer(serializers.ModelSerializer):
@@ -100,7 +100,7 @@ class TicketListSerializer(serializers.ModelSerializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
-    tickets = TicketSerializer(many=True, read_only=True, allow_empty=False)
+    tickets = TicketSerializer(many=True, read_only=False, allow_empty=False)
 
     class Meta:
         model = Order
@@ -115,5 +115,5 @@ class OrderSerializer(serializers.ModelSerializer):
             return order
 
 
-class OrderListSerializer(serializers.ModelSerializer):
-    tickets = TicketSerializer(many=True, read_only=True)
+class OrderListSerializer(OrderSerializer):
+    tickets = TicketListSerializer(many=True, read_only=True)
